@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Adventure</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui-layer">
+            <div id="ui-left">
+                <div id="ui-ammo">Ammo: 20 (Coins: 0)</div>
+                <div id="ui-gun">Gun Lvl: 1</div>
+                <div id="ui-health">❤️ X 10</div>
+            </div>
+            <div id="ui-right">
+                <button id="pause-btn" class="ui-button">⏸️ PAUSE (ESC)</button>
+                <div id="ui-wave">Wave: 1</div>
+                <div id="ui-timer">Next Wave: 30s</div>
+            </div>
+        </div>
+
+        <div id="start-screen" class="menu-screen">
+            <h1>PIXEL SURVIVAL</h1>
+            <p>WASD to Move | Mouse to Aim & Shoot</p>
+            <button id="start-btn">PLAY GAME</button>
+        </div>
+
+        <div id="game-over-screen" class="menu-screen hidden">
+            <h1>GAME OVER</h1>
+            <p id="final-wave-text">You survived to Wave 0</p>
+            <button id="restart-btn">TRY AGAIN</button>
+        </div>
+
+        <div id="game-over-screen" class="menu-screen hidden">
+            <h1>GAME OVER</h1>
+            <p id="final-wave-text">You survived to Wave 0</p>
+            <button id="restart-btn">TRY AGAIN</button>
+        </div>
+
+        <div id="pause-screen" class="menu-screen hidden">
+            <h1>PAUSED</h1>
+            <button id="resume-btn">RESUME GAME</button>
+        </div>
+    </div>
+    
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

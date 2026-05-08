@@ -1,0 +1,113 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+    image-rendering: pixelated; 
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; 
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    box-sizing: border-box;
+    
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 24px;
+    color: white;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+#ui-left { display: flex; flex-direction: column; gap: 8px; }
+#ui-right { display: flex; flex-direction: column; gap: 8px; text-align: right; }
+
+#ui-health { color: #ff0055; }
+#ui-wave { color: #ffaa00; }
+#ui-timer { color: #ffaa00; }
+
+/* --- MENU SCREENS --- */
+.menu-screen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.85); /* Dark cinematic overlay */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    z-index: 10; /* Ensures it floats above everything */
+}
+
+.menu-screen.hidden {
+    display: none; /* Used by JavaScript to hide the menus */
+}
+
+.menu-screen h1 {
+    font-size: 72px;
+    color: #ffaa00;
+    text-shadow: 4px 4px 0 #000;
+    margin-bottom: 10px;
+}
+
+.menu-screen p {
+    font-size: 24px;
+    margin-bottom: 40px;
+}
+
+.menu-screen button {
+    padding: 15px 40px;
+    font-size: 32px;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    background-color: #228B22;
+    color: white;
+    border: 4px solid #fff;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 #000;
+    transition: background-color 0.2s;
+}
+
+.menu-screen button:hover {
+    background-color: #32CD32;
+}
+
+.ui-button {
+    background-color: #228B22;
+    color: white;
+    border: 2px solid #fff;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 18px;
+    padding: 5px 10px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #000;
+    margin-bottom: 10px;
+    pointer-events: auto; /* Allows the button to be clicked through the UI layer */
+}
+
+.ui-button:hover {
+    background-color: #32CD32;
+}
