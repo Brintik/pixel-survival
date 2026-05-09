@@ -94,6 +94,13 @@ function togglePause() {
 document.getElementById('pause-btn').addEventListener('click', togglePause);
 document.getElementById('resume-btn').addEventListener('click', togglePause);
 
+document.getElementById('pause-restart-btn').addEventListener('click', () => {
+    // 1. Hide the pause menu overlay
+    document.getElementById('pause-screen').classList.add('hidden');
+    // 2. Trigger your existing Game Over reset function!
+    resetGame();
+});
+
 // Listen for keyboard shortcuts (P or Escape)
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape') {
@@ -214,9 +221,13 @@ function gameLoop(timestamp) {
 
         level.draw(ctx, images.sunny, images.forest);
         items.forEach(item => item.draw(ctx, images.sunny)); 
-        enemies.forEach(enemy => enemy.draw(ctx, images.chars));
+        // Check the enemy type and pass the correct spritesheet!
+        enemies.forEach(enemy => {
+            const enemyImage = enemy.type === 1 ? images.enemy_walk : images.enemy2_walk;
+            enemy.draw(ctx, enemyImage);
+        });
         bullets.forEach(bullet => bullet.draw(ctx, images.sunny));
-        player.draw(ctx, images.chars);
+        player.draw(ctx, images.player_walk);
 
         ctx.restore(); 
 
@@ -243,7 +254,10 @@ function gameLoop(timestamp) {
 const assetsToLoad = {
     chars: 'assets/images/chars.png',
     sunny: 'assets/images/sunny_16.png',
-    forest: 'assets/images/forest_32.png'
+    forest: 'assets/images/forest_32.png',
+    player_walk: 'assets/images/base_walk_strip8.png',
+    enemy_walk: 'assets/images/skeleton_walk_strip8.png',
+    enemy2_walk: 'assets/images/spr_walk_strip8.png'
 };
 
 loadAllImages(assetsToLoad).then(() => {
