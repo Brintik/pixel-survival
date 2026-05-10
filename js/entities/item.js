@@ -29,6 +29,9 @@ export class Item {
                 } else {
                     sourceX = 880; sourceY = 160; // Health Buff 2
                 }
+            } 
+            else if (this.type === 'ammo') {
+                sourceX = 608; sourceY = 480; // Reusing the coin sprite for ammo drops
             }
 
             ctx.drawImage(

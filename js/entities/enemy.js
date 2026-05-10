@@ -13,7 +13,7 @@ export class Enemy {
         this.health = 3;
         this.active = true;
         this.shootTimer = 0;
-        this.bombTimer = 0;
+        this.bombCooldown = 0;
 
         // --- 8-FRAME ANIMATION VARIABLES ---
         this.frameX = 0;
@@ -49,7 +49,7 @@ export class Enemy {
         }
 
         this.shootTimer += deltaTime;
-        this.bombTimer += deltaTime;
+        this.bombCooldown += deltaTime;
 
         // Center coordinates for shooting out of their chest
         let centerX = this.x + (this.width / 2);
@@ -62,9 +62,16 @@ export class Enemy {
             bulletsArray.push(new Bullet(centerX, centerY, playerCenterX, playerCenterY, 100, true));
         }
 
-        if (this.bombTimer >= 5) {
-            this.bombTimer = 0;
-            bulletsArray.push(new Bullet(centerX, centerY, 0, 0, 0, true, true)); 
+        // --- NEW BOMB LOGIC: Proximity Check! ---
+
+        // Calculate distance to player using the Pythagorean theorem
+        let distToPlayer = Math.sqrt(Math.pow(player.x - this.x, 2) + Math.pow(player.y - this.y, 2));
+
+        // Only throw a bomb if the player is within 250 pixels!
+        if (this.bombCooldown >= 6 && distToPlayer < 250) {
+            this.bombCooldown = 0; // Reset the 4-second cooldown
+            // Pass the player's exact location at this moment so the bomb knows where to land
+            bulletsArray.push(new Bullet(this.x, this.y, player.x, player.y, 200, true, true));
         }
     }
 

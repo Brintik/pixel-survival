@@ -1,6 +1,6 @@
-import { keys, mouse } from '../engine/input.js';
 import { Bullet } from './bullet.js';
 import { playSound } from '../engine/audio.js';
+import { keys, mouse, joyMove } from '../engine/input.js';
 
 export class Player {
     constructor(x, y) {
@@ -12,7 +12,7 @@ export class Player {
         this.width = 24; 
         this.height = 24;
         
-        this.speed = 150; 
+        this.speed = 100; 
         
         this.health = 10;
         this.maxHealth = 10;
@@ -31,10 +31,20 @@ export class Player {
         let nextX = this.x; let nextY = this.y;
         this.isMoving = false; 
 
-        if (keys.ArrowUp || keys.KeyW) { nextY -= this.speed * deltaTime; this.isMoving = true; }
-        if (keys.ArrowDown || keys.KeyS) { nextY += this.speed * deltaTime; this.isMoving = true; }
-        if (keys.ArrowLeft || keys.KeyA) { nextX -= this.speed * deltaTime; this.isMoving = true; this.facingLeft = true;}
-        if (keys.ArrowRight || keys.KeyD) { nextX += this.speed * deltaTime; this.isMoving = true; this.facingLeft = false;}
+        // --- MOVEMENT UPGRADE ---
+        // Now checks Keyboard OR Virtual Joystick!
+        if (keys.ArrowUp || keys.KeyW || joyMove.y < -0.2) { nextY -= this.speed * deltaTime; this.isMoving = true; }
+        if (keys.ArrowDown || keys.KeyS || joyMove.y > 0.2) { nextY += this.speed * deltaTime; this.isMoving = true; }
+        if (keys.ArrowLeft || keys.KeyA || joyMove.x < -0.2) { 
+            nextX -= this.speed * deltaTime; 
+            this.isMoving = true; 
+            this.facingLeft = true; 
+        }
+        if (keys.ArrowRight || keys.KeyD || joyMove.x > 0.2) { 
+            nextX += this.speed * deltaTime; 
+            this.isMoving = true; 
+            this.facingLeft = false; 
+        }
 
         // AABB Sliding Collision
         if (!this.checkCollision(nextX, this.y, level)) this.x = nextX;
@@ -57,26 +67,35 @@ export class Player {
             this.frameTimer = 0;
         }
 
-        // Shooting Logic
+        // --- THE SHOOTING TIMER TICK! ---
         if (this.shootCooldown > 0) this.shootCooldown -= deltaTime;
 
+        // --- SHOOTING UPGRADE ---
+        let fireRate = 0.5 / this.gunLevel;
+        
+        // 1. THE RELOAD LOGIC:
+        // If they try to shoot but have 0 ammo, check if they have coins!
         if (mouse.isDown && this.ammo <= 0 && this.coins > 0 && this.shootCooldown <= 0) {
             this.coins -= 1;
-            this.ammo += 15;
+            this.ammo += 15; // Give them a fresh clip of 15 bullets!
+            this.shootCooldown = fireRate; // Add a tiny delay before the next shot fires
+            playSound('powerup', 0.5); // Play a sound so they know they reloaded
         }
 
-        let fireRate = 0.5 / this.gunLevel;
+        // 2. THE FIRING LOGIC:
+        // Now checks Mouse Click OR Mobile Screen Tap/Hold!
         if (mouse.isDown && this.shootCooldown <= 0 && this.ammo > 0) {
             this.ammo--;
             this.shootCooldown = fireRate;
-            let worldMouseX = mouse.x + camera.x;
-            let worldMouseY = mouse.y + camera.y;
             
-            // Fixed bullet spawn coordinates to shoot from the center of the new 24x24 hitbox
             let centerX = this.x + (this.width / 2);
             let centerY = this.y + (this.height / 2);
             
-            bullets.push(new Bullet(centerX, centerY, worldMouseX, worldMouseY, 250, false));
+            // PC mouse target OR Mobile Tap target
+            let targetX = mouse.x + camera.x;
+            let targetY = mouse.y + camera.y;
+            
+            bullets.push(new Bullet(centerX, centerY, targetX, targetY, 250, false));
             playSound('shoot', 0.3); 
         }
     }

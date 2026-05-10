@@ -5,12 +5,31 @@ import { Enemy } from './entities/enemy.js';
 import { Item } from './entities/item.js';
 import { loadAllImages, images } from './engine/loader.js';
 import { initAudio, playSound } from './engine/audio.js';
+import { initMobileControls } from './engine/input.js';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+let ammoEventCount = 0;
+let ammoDropTimer = 0;
+let isWaitingForAmmo = false;
 
 canvas.width = 640;
 canvas.height = 480;
+
+
+// Function to lock mobile screens to landscape
+async function goFullscreenAndLandscape() {
+    try {
+        if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+        }
+        if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock('landscape');
+        }
+    } catch (err) {
+        console.log("Fullscreen/Landscape lock failed or not supported.");
+    }
+}
 
 function getSafeSpawn(level) {
     let safe = false;
@@ -37,6 +56,7 @@ const camera = new Camera(canvas.width, canvas.height);
 let bullets = [];
 let items = [];
 let enemies = [];
+let explosions = [];
 let waveNumber = 0;
 let waveTimer = 0;
 let maxWaveTime = 0;
@@ -59,7 +79,10 @@ function resetGame() {
     bullets = [];
     items = [];
     enemies = [];
+    explosions = [];
     waveNumber = 0;
+    ammoEventCount = 0;
+    isWaitingForAmmo = false;
     
     // 3. Hide the Game Over screen and start!
     document.getElementById('game-over-screen').classList.add('hidden');
@@ -70,7 +93,16 @@ function resetGame() {
 // Button Listeners
 document.getElementById('start-btn').addEventListener('click', () => {
     document.getElementById('start-screen').classList.add('hidden');
-    // Note: The audio policy is unlocked here because the user physically clicked a button!
+    
+    // --- STRICT MOBILE CHECK ---
+    // This string specifically looks for real phone operating systems!
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        initMobileControls(); // Only spawn joysticks on real phones
+        goFullscreenAndLandscape(); // Only force fullscreen on real phones
+    }
+    
     gameState = 'PLAYING';
     startNextWave();
 });
@@ -89,6 +121,40 @@ function togglePause() {
         lastTime = performance.now(); 
     }
 }
+
+// --- MOBILE GESTURES (Double Tap & Swipe Down) ---
+let lastTapTime = 0;
+let touchStartY = 0;
+
+window.addEventListener('touchstart', (e) => {
+    // 1. Record where the finger touched the screen (for swiping down)
+    touchStartY = e.changedTouches[0].clientY; 
+
+    // 2. Check for Double Tap (two taps within 300 milliseconds)
+    const currentTime = new Date().getTime();
+    const tapGap = currentTime - lastTapTime;
+    
+    if (tapGap > 0 && tapGap < 300) {
+        // Double tap confirmed! Make sure we are on a phone before entering fullscreen
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile && gameState === 'PLAYING') {
+            goFullscreenAndLandscape();
+        }
+    }
+    lastTapTime = currentTime;
+}, { passive: false });
+
+window.addEventListener('touchend', (e) => {
+    let touchEndY = e.changedTouches[0].clientY;
+    
+    // 3. Exit Fullscreen if they swiped down significantly (more than 80px) 
+    //    AND they started the swipe from the very top edge of the screen (top 50px).
+    if (touchStartY < 50 && (touchEndY - touchStartY > 80)) {
+        if (document.fullscreenElement && document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+});
 
 // Listen for physical mouse clicks on the buttons
 document.getElementById('pause-btn').addEventListener('click', togglePause);
@@ -155,6 +221,27 @@ function gameLoop(timestamp) {
             startNextWave();
         }
 
+        // --- EMERGENCY AMMO DROP LOGIC ---
+        // If out of ammo and coins, start the timer!
+        if (player.ammo <= 0 && player.coins <= 0 && !isWaitingForAmmo) {
+            isWaitingForAmmo = true;
+            // Base 30 seconds + 10 extra seconds for every previous drop
+            ammoDropTimer = 30 + (10 * ammoEventCount); 
+        }
+
+        // Tick the timer down
+        if (isWaitingForAmmo) {
+            ammoDropTimer -= deltaTime;
+            if (ammoDropTimer <= 0) {
+                // Timer finished! Spawn the emergency ammo!
+                let randomLoc = getSafeSpawn(level);
+                items.push(new Item(randomLoc.x, randomLoc.y, 'ammo'));
+                
+                ammoEventCount++; // Increase the penalty for next time
+                isWaitingForAmmo = false; // Reset the flag
+            }
+        }
+
         player.update(deltaTime, level, camera, bullets);
         camera.follow(player, level.width, level.height);
 
@@ -183,8 +270,31 @@ function gameLoop(timestamp) {
             if (bullet.isBomb && bullet.timer <= 0 && bullet.active) {
                 bullet.active = false; 
                 playSound('explosion', 0.7);
-                let explosionArea = { x: bullet.x - 32, y: bullet.y - 32, width: 80, height: 80 };
-                if (checkOverlap(explosionArea, player)) {
+                
+                let centerX = bullet.x + (bullet.width / 2);
+                let centerY = bullet.y + (bullet.height / 2);
+
+                // --- 1. SPAWN THE BIGGER VISUAL BLAST ---
+                explosions.push({
+                    x: centerX,
+                    y: centerY,
+                    radius: 10,       
+                    timer: 0.5,       // Lasts for half a second
+                    maxTimer: 0.5
+                });
+
+                // --- 2. THE PERFECT CIRCLE COLLISION ---
+                // We define the exact maximum radius of the blast (100 pixels!)
+                let maxBlastRadius = 100;
+                
+                let playerCenterX = player.x + (player.width / 2);
+                let playerCenterY = player.y + (player.height / 2);
+                
+                // Use the Pythagorean theorem to find the exact distance!
+                let distToPlayer = Math.sqrt(Math.pow(playerCenterX - centerX, 2) + Math.pow(playerCenterY - centerY, 2));
+
+                // If the player is inside the blast circle, they take damage!
+                if (distToPlayer <= maxBlastRadius) {
                     player.health -= 2;
                     playSound('hit', 0.6);
                 }
@@ -197,6 +307,7 @@ function gameLoop(timestamp) {
                 if (item.type === 'coin') { player.coins++; playSound('coin', 0.4); }
                 if (item.type === 'fruit' && player.health < player.maxHealth) { player.health++; playSound('crunch', 0.5); }
                 if (item.type === 'upgrade') { player.gunLevel++; playSound('powerup', 0.6); }
+                if (item.type === 'ammo') { player.ammo += 15; playSound('powerup', 0.6); }
             }
         });
 
@@ -229,7 +340,31 @@ function gameLoop(timestamp) {
         bullets.forEach(bullet => bullet.draw(ctx, images.sunny));
         player.draw(ctx, images.player_walk);
 
-        ctx.restore(); 
+        // --- NEW: DRAW EXPLOSIONS ---
+        explosions.forEach(exp => {
+            exp.timer -= deltaTime;
+            exp.radius += 180 * deltaTime; // The blast wave expands rapidly to exactly 100px!
+
+            // Calculate opacity (alpha) so it fades out as the timer hits 0
+            let alpha = Math.max(0, exp.timer / exp.maxTimer);
+
+            // 1. The Outer Orange/Red Smoke (Slightly larger and more transparent)
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 69, 0, ${alpha * 0.7})`; 
+            ctx.fill();
+
+            // 2. The Inner Hot Yellow Core (Smaller and brighter)
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 235, 59, ${alpha})`; 
+            ctx.fill();
+        });
+
+        // Cleanup: Remove explosions that have completely faded away
+        explosions = explosions.filter(exp => exp.timer > 0);
+
+        ctx.restore();
 
         // --- STATIC UI ---
         document.getElementById('ui-ammo').innerText = `Ammo: ${player.ammo} (Coins: ${player.coins})`;
